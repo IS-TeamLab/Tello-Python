@@ -1,0 +1,4 @@
+matplotlib
+numpy
+Pillow
+git+https://github.com/DaWelter/h264decoder.git
