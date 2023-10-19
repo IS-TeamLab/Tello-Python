@@ -1,14 +1,14 @@
 import socket
 import threading
-import time
 import numpy as np
 import h264decoder
+from tello_control_ui import TelloUI
 
 class Tello:
     """Wrapper class to interact with the Tello drone."""
 
     def __init__(self, local_ip, local_port, imperial=False, command_timeout=.3, tello_ip='192.168.10.1',
-                 tello_port=8889):
+                 tello_port=8889, video=False, video_path="./img/"):
         """
         Binds to the local IP/port and puts the Tello into command mode.
 
@@ -20,7 +20,7 @@ class Tello:
         :param tello_ip (str): Tello IP.
         :param tello_port (int): Tello port.
         """
-        
+
         self.abort_flag = False
         self.decoder = h264decoder.H264Decoder()
         self.command_timeout = command_timeout
@@ -45,20 +45,27 @@ class Tello:
         # to receive video -- send cmd: command, streamon
         self.socket.sendto(b'command', self.tello_address)
         print ('sent: command')
-        self.socket.sendto(b'streamon', self.tello_address)
-        print ('sent: streamon')
+        if video:
+            self.socket.sendto(b'streamon', self.tello_address)
+            print ('sent: streamon')
 
-        self.socket_video.bind((local_ip, self.local_video_port))
+            self.socket_video.bind((local_ip, self.local_video_port))
 
-        # thread for receiving video
-        self.receive_video_thread = threading.Thread(target=self._receive_video_thread)
-        self.receive_video_thread.daemon = True
-
-        self.receive_video_thread.start()
-
+            # thread for receiving video
+            self.receive_video_thread = threading.Thread(target=self._receive_video_thread)
+            self.receive_video_thread.daemon = True
+            self.receive_video_thread.start()
+            # thread for ui
+            self.ui_thread=threading.Thread(target=self._tello_ui, args=(video_path,))
+            self.ui_thread.start()
+    def _tello_ui(self, video_path):
+            self.vplayer = TelloUI(self, video_path)
+            self.vplayer.root.mainloop()
     def __del__(self):
         """Closes the local socket."""
-
+        self.socket.sendto(b'streamoff', self.tello_address)
+        print ('sent: streamoff')
+        self.land()
         self.socket.close()
         self.socket_video.close()
     
@@ -86,7 +93,7 @@ class Tello:
                 self.response, ip = self.socket.recvfrom(3000)
                 #print(self.response)
             except socket.error as exc:
-                print ("Caught exception socket.error : %s" % exc)
+                print("Caught exception socket.error : %s" % exc)
 
     def _receive_video_thread(self):
         """
