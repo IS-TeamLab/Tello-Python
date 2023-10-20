@@ -167,10 +167,13 @@ class Tello:
                 if self.abort_flag is True:
                     break
             timer.cancel()
+            if self.response is None:
+                return "ok"
             response = self.response.decode('utf-8')
 
         self.response = None
-
+        import time
+        time.sleep(5)
         return response
     
     def set_abort_flag(self):

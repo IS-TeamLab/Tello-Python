@@ -105,7 +105,6 @@ class TelloUI:
                         y = point[0][1]
                         
                         draw=ImageDraw.Draw(image)
-                        print(dec_inf)
                         # QRコードデータ
                         draw.text([x, y], dec_inf, 'red', font=ImageFont.load_default(size=12))
 
@@ -278,10 +277,10 @@ class TelloUI:
         filename = "{}.jpg".format(ts.strftime("%Y-%m-%d_%H-%M-%S"))
 
         p = os.path.sep.join((self.outputPath, filename))
-
+        os.makedirs(os.path.dirname(p), exist_ok=True)
         # save the file
         cv2.imwrite(p, cv2.cvtColor(self.frame, cv2.COLOR_RGB2BGR))
-        print("[INFO] saved {}".format(filename))
+        print("[INFO] saved {}".format(os.path.abspath(p)))
 
 
     def pauseVideo(self):
