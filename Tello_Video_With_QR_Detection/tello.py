@@ -158,10 +158,15 @@ class Tello:
             if self.abort_flag is True:
                 break
         timer.cancel()
-        
         if self.response is None:
             response = 'none_response'
         else:
+            timer = threading.Timer(self.command_timeout, self.set_abort_flag)
+            timer.start()
+            while self.response == b'ok':
+                if self.abort_flag is True:
+                    break
+            timer.cancel()
             response = self.response.decode('utf-8')
 
         self.response = None
@@ -464,3 +469,9 @@ class Tello:
         """
 
         return self.move('up', distance)
+    
+    def close(self):
+        try:
+            getattr(self, "vplayer").onClose()
+        except AttributeError:
+            print("[INFO] closing...")

@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from PIL import ImageTk
 import tkinter as tki
 from tkinter import Toplevel, Scale
@@ -9,6 +9,8 @@ import os
 import time
 import platform
 import numpy
+
+font = cv2.FONT_HERSHEY_SIMPLEX
 
 class TelloUI:
     """Wrapper class to enable the GUI."""
@@ -37,6 +39,7 @@ class TelloUI:
         self.quit_waiting_flag = False
         
         self.qrd=cv2.QRCodeDetector()
+        self.qrs=[]
 
         # initialize the root window and image panel
         self.root = tki.Tk()
@@ -90,7 +93,27 @@ class TelloUI:
             # transfer the format from frame to image         
                 image = Image.fromarray(self.frame)
                 retval, decoded_info, points, straight_qrcode = self.qrd.detectAndDecodeMulti(self._pil2cv(image))
-                for i in decoded_info: print(i)
+                if retval:
+                    points = points.astype(numpy.int32)
+
+                    for dec_inf, point in zip(decoded_info, points):
+                        if dec_inf == '' and dec_inf.startswith("drone_"):
+                            continue
+
+                        # QRコード座標取得
+                        x = point[0][0]
+                        y = point[0][1]
+                        
+                        draw=ImageDraw.Draw(image)
+                        print(dec_inf)
+                        # QRコードデータ
+                        draw.text([x, y], dec_inf, 'red', font=ImageFont.load_default(size=12))
+
+                        # 新規ならスクショ
+                        if not dec_inf in self.qrs:
+                            self.qrs.append(dec_inf)
+                            print("detect:",dec_inf)
+                            self.takeSnapshot()
 
             # we found compatibility problem between Tkinter,PIL and Macos,and it will 
             # sometimes result the very long preriod of the "ImageTk.PhotoImage" function,
@@ -135,7 +158,10 @@ class TelloUI:
         """    
 
         while True:
-            self.tello.send_command('command')        
+            try:
+                self.tello.send_command('command')
+            except AttributeError:
+                break      
             time.sleep(5)
 
     def _setQuitWaitingFlag(self):  
@@ -369,4 +395,3 @@ class TelloUI:
         self.stopEvent.set()
         del self.tello
         self.root.quit()
-
